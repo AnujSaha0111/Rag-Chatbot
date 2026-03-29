@@ -40,7 +40,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
 if 'chatbot' not in st.session_state:
     st.session_state.chatbot = None
     st.session_state.chatbot_initialized = False
@@ -82,17 +81,41 @@ def run_ingestion():
     else:
         st.error("❌ Ingestion failed. Check the logs for details.")
 
+
+def display_sources(sources):
+    if not sources:
+        return
+
+    with st.expander(f"📄 View {len(sources)} Source Document(s)", expanded=False):
+        for i, doc in enumerate(sources, 1):
+            st.markdown(f"**Source {i}:** {doc.metadata.get('source', 'Unknown')}")
+            st.markdown(f"**Page:** {doc.metadata.get('page', 'N/A')}")
+            st.markdown(f"**Content:**")
+
+            content = doc.page_content if doc.page_content else "No content available"
+            clean_content = ' '.join(content.split())[:300] + "..."
+
+            import time
+            unique_key = f"source_content_{i}_{int(time.time() * 1000000)}"
+            st.text_area(
+                label="Document Content",
+                value=clean_content,
+                height=100,
+                disabled=True,
+                key=unique_key,
+                label_visibility="collapsed"
+            )
+            st.markdown("---")
+
+
 def main():
-    # Header
     st.markdown('<div class="main-header">🤖 RAG Chatbot</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Chat with your documents using AI</div>',
                 unsafe_allow_html=True)
 
-    # Sidebar
     with st.sidebar:
         st.header("⚙️ Configuration")
 
-        # Display current settings
         st.info(f"""
         **Current Settings:**
         - Embedding Model: {config.EMBEDDING_MODEL_TYPE.upper()}
@@ -103,7 +126,6 @@ def main():
 
         st.markdown("---")
 
-        # Document Management
         st.header("📚 Document Management")
 
         pdf_count = get_pdf_count(config.DATA_DIR)
@@ -114,7 +136,47 @@ def main():
 
         st.markdown("---")
 
-    # Main chat interface
+        st.subheader("📥 Ingest Documents")
+        st.caption("Load PDFs from the /data folder")
+
+        if st.button("🚀 Run Ingestion", type="primary", use_container_width=True):
+            if pdf_count == 0:
+                st.error("No PDF files found in /data directory!")
+            else:
+                run_ingestion()
+
+        st.markdown("---")
+
+        if not st.session_state.chatbot_initialized:
+            if st.button("🔄 Initialize Chatbot", use_container_width=True):
+                initialize_chatbot()
+        else:
+            st.success("✅ Chatbot Active")
+            if st.button("🔄 Reinitialize", use_container_width=True):
+                initialize_chatbot()
+
+        st.markdown("---")
+
+        st.subheader("🎛️ Options")
+        st.session_state.show_sources = st.checkbox("Show source documents", value=True)
+
+        if st.button("🗑️ Clear Chat History", use_container_width=True):
+            st.session_state.messages = []
+            if st.session_state.chatbot:
+                st.session_state.chatbot.clear_memory()
+            st.rerun()
+
+        st.markdown("---")
+
+        with st.expander("ℹ️ How to Use"):
+            st.markdown("""
+            1. **Add PDFs**: Place PDF files in the `data/` folder
+            2. **Run Ingestion**: Click 'Run Ingestion' to process documents
+            3. **Initialize**: Click 'Initialize Chatbot' to load the system
+            4. **Chat**: Type your questions in the chat box
+            5. **View Sources**: Check the source documents used for answers
+            """)
+
     if not st.session_state.chatbot_initialized:
         st.warning("⚠️ Please initialize the chatbot from the sidebar to start chatting.")
 
@@ -132,7 +194,44 @@ def main():
 
         return
 
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
+            if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
+                display_sources(message["sources"])
+
+    if prompt := st.chat_input("Ask a question about your documents..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
+                    result = st.session_state.chatbot.query(prompt)
+                    response = result["answer"]
+                    sources = result.get("source_documents", [])
+
+                    st.markdown(response)
+
+                    if st.session_state.show_sources and sources:
+                        display_sources(sources)
+
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": response,
+                        "sources": sources
+                    })
+
+                except Exception as e:
+                    error_msg = f"❌ Error: {str(e)}"
+                    st.error(error_msg)
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": error_msg
+                    })
 
 
 if __name__ == "__main__":

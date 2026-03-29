@@ -1,8 +1,3 @@
-"""
-Document Ingestion Pipeline
-Handles loading, chunking, and storing documents in FAISS vector store
-"""
-
 import os
 from langchain_community.vectorstores import FAISS
 import config
@@ -40,7 +35,13 @@ def ingest_documents(data_dir: str = config.DATA_DIR) -> bool:
         print("\n[2/4] Splitting documents into chunks...")
         chunks = split_documents(documents)
 
-        
+        # Print chunk statistics
+        stats = get_chunk_stats(chunks)
+        print(f"Chunk Statistics:")
+        print(f"  - Total chunks: {stats['total']}")
+        print(f"  - Average length: {stats['avg_length']:.0f} chars")
+        print(f"  - Min/Max length: {stats['min_length']}/{stats['max_length']} chars")
+
         # Step 3: Get embeddings model
         print("\n[3/4] Initializing embeddings model...")
         embeddings = get_embeddings()
@@ -48,6 +49,15 @@ def ingest_documents(data_dir: str = config.DATA_DIR) -> bool:
         # Step 4: Create and persist vector store
         print("\n[4/4] Creating vector store and generating embeddings...")
         print("This may take a few minutes...")
+
+        # Create new vectorstore
+        vectorstore = FAISS.from_documents(
+            documents=chunks,
+            embedding=embeddings
+        )
+
+        # Save to disk
+        vectorstore.save_local(config.VECTORSTORE_PATH)
 
         print(f"\n{'='*50}")
         print(f"[SUCCESS] Ingestion Complete!")
