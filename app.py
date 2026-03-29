@@ -50,6 +50,13 @@ if 'messages' not in st.session_state:
 if 'show_sources' not in st.session_state:
     st.session_state.show_sources = True
 
+if 'api_keys' not in st.session_state:
+    st.session_state.api_keys = {
+        'openai': '',
+        'groq': '',
+        'huggingface': ''
+    }
+
 
 def initialize_chatbot():
     try:
@@ -58,7 +65,7 @@ def initialize_chatbot():
             return False
 
         with st.spinner("Initializing chatbot..."):
-            st.session_state.chatbot = RAGChatbot()
+            st.session_state.chatbot = RAGChatbot(runtime_keys=st.session_state.api_keys)
             st.session_state.chatbot.initialize()
             st.session_state.chatbot_initialized = True
 
@@ -115,6 +122,38 @@ def main():
 
     with st.sidebar:
         st.header("⚙️ Configuration")
+
+        # API Keys Section
+        with st.expander("🔑 API Keys", expanded=False):
+            st.caption("Enter your API keys for this session. Keys are not stored permanently.")
+
+            st.session_state.api_keys['openai'] = st.text_input(
+                "OpenAI API Key",
+                value=st.session_state.api_keys['openai'],
+                type="password",
+                key="openai_key_input",
+                help="Your OpenAI API key for GPT models"
+            )
+
+            st.session_state.api_keys['groq'] = st.text_input(
+                "Groq API Key",
+                value=st.session_state.api_keys['groq'],
+                type="password",
+                key="groq_key_input",
+                help="Your Groq API key for Llama models"
+            )
+
+            st.session_state.api_keys['huggingface'] = st.text_input(
+                "HuggingFace API Key",
+                value=st.session_state.api_keys['huggingface'],
+                type="password",
+                key="hf_key_input",
+                help="Your HuggingFace API key for inference"
+            )
+
+            st.info("💡 Only provide keys for the provider you're using. Session keys override environment variables.")
+
+        st.markdown("---")
 
         st.info(f"""
         **Current Settings:**

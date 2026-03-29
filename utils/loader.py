@@ -3,7 +3,6 @@ from typing import List
 from pypdf import PdfReader
 from langchain_core.documents import Document
 
-
 def load_pdf(file_path: str) -> List[Document]:
     documents = []
 
@@ -29,7 +28,6 @@ def load_pdf(file_path: str) -> List[Document]:
 
     return documents
 
-
 def load_documents_from_directory(directory_path: str) -> List[Document]:
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
@@ -54,7 +52,6 @@ def load_documents_from_directory(directory_path: str) -> List[Document]:
     print(f"Loaded {len(all_documents)} pages total")
 
     return all_documents
-
 
 def get_pdf_count(directory_path: str) -> int:
     if not os.path.exists(directory_path):

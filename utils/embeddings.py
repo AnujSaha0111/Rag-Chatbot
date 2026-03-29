@@ -3,22 +3,33 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 import config
 
 
-def get_embeddings():
+def get_embeddings(runtime_keys=None):
+    """
+    Get embeddings model based on configuration
+
+    Args:
+        runtime_keys: Dict with optional API keys like {'openai': '...', 'huggingface': '...'}
+
+    Returns:
+        Embeddings model (OpenAI, HuggingFace, or Local)
+    """
+    api_keys = config.get_api_keys(runtime_keys)
+
     if config.EMBEDDING_MODEL_TYPE == "openai":
         print("Using OpenAI embeddings...")
         return OpenAIEmbeddings(
             model=config.OPENAI_EMBEDDING_MODEL,
-            openai_api_key=config.OPENAI_API_KEY
+            openai_api_key=api_keys["openai"]
         )
 
     elif config.EMBEDDING_MODEL_TYPE == "huggingface":
         print("Using HuggingFace embeddings...")
         try:
             # Try with API key first if available
-            if config.HUGGINGFACE_API_KEY:
+            if api_keys["huggingface"]:
                 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
                 return HuggingFaceInferenceAPIEmbeddings(
-                    api_key=config.HUGGINGFACE_API_KEY,
+                    api_key=api_keys["huggingface"],
                     model_name=config.HUGGINGFACE_EMBEDDING_MODEL
                 )
             else:
@@ -42,7 +53,6 @@ def get_embeddings():
 
     else:
         raise ValueError(f"Unsupported embedding model type: {config.EMBEDDING_MODEL_TYPE}")
-
 
 def test_embeddings():
     try:

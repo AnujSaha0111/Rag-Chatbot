@@ -3,13 +3,24 @@ from langchain_groq import ChatGroq
 import config
 
 
-def get_llm():
+def get_llm(runtime_keys=None):
+    """
+    Get LLM model based on configuration
+
+    Args:
+        runtime_keys: Dict with optional API keys like {'openai': '...', 'groq': '...'}
+
+    Returns:
+        LLM model (OpenAI, Groq, or HuggingFace)
+    """
+    api_keys = config.get_api_keys(runtime_keys)
+
     if config.EMBEDDING_MODEL_TYPE == "openai":
         print(f"Using OpenAI LLM: {config.OPENAI_LLM_MODEL}")
         return ChatOpenAI(
             model=config.OPENAI_LLM_MODEL,
             temperature=config.LLM_TEMPERATURE,
-            openai_api_key=config.OPENAI_API_KEY
+            openai_api_key=api_keys["openai"]
         )
 
     elif config.EMBEDDING_MODEL_TYPE == "groq":
@@ -17,7 +28,7 @@ def get_llm():
         return ChatGroq(
             model=config.GROQ_LLM_MODEL,
             temperature=config.LLM_TEMPERATURE,
-            groq_api_key=config.GROQ_API_KEY
+            groq_api_key=api_keys["groq"]
         )
 
     elif config.EMBEDDING_MODEL_TYPE == "huggingface":
@@ -27,12 +38,11 @@ def get_llm():
         return ChatGroq(
             model=config.GROQ_LLM_MODEL,
             temperature=config.LLM_TEMPERATURE,
-            groq_api_key=config.GROQ_API_KEY
+            groq_api_key=api_keys["groq"]
         )
 
     else:
         raise ValueError(f"Unsupported embedding model type: {config.EMBEDDING_MODEL_TYPE}")
-
 
 def test_llm():
     try:

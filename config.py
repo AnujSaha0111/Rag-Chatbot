@@ -10,6 +10,23 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
+def get_api_keys(runtime_keys=None):
+    """
+    Get API keys from environment or runtime overrides
+
+    Args:
+        runtime_keys: Dict with keys like {'openai': '...', 'groq': '...', 'huggingface': '...'}
+
+    Returns:
+        Dict with current API keys
+    """
+    runtime_keys = runtime_keys or {}
+    return {
+        "openai": runtime_keys.get("openai") or OPENAI_API_KEY,
+        "huggingface": runtime_keys.get("huggingface") or HUGGINGFACE_API_KEY,
+        "groq": runtime_keys.get("groq") or GROQ_API_KEY,
+    }
+
 # OpenAI Models
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 OPENAI_LLM_MODEL = "gpt-4o-mini"
