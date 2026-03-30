@@ -30,12 +30,17 @@ RAG_PROMPT = PromptTemplate(
 
 class RAGChatbot:
 
-    def __init__(self):
-        """Initialize the RAG chatbot"""
+    def __init__(self, runtime_keys=None):
+        """Initialize the RAG chatbot
+
+        Args:
+            runtime_keys: Optional dict with API keys from user input
+        """
         self.vectorstore = None
         self.retriever = None
         self.llm = None
         self.qa_chain = None
+        self.runtime_keys = runtime_keys or {}
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True,
@@ -43,7 +48,7 @@ class RAGChatbot:
         )
 
     def load_vectorstore(self):
-        embeddings = get_embeddings()
+        embeddings = get_embeddings(self.runtime_keys)
 
         self.vectorstore = FAISS.load_local(
             config.VECTORSTORE_PATH,
@@ -58,7 +63,7 @@ class RAGChatbot:
         print(f"[SUCCESS] Vector store loaded successfully")
 
     def initialize_llm(self):
-        self.llm = get_llm()
+        self.llm = get_llm(self.runtime_keys)
         print(f"LLM initialized successfully")
 
     def setup_qa_chain(self):
