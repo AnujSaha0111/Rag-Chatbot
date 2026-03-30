@@ -6,17 +6,19 @@ from utils.splitter import split_documents, get_chunk_stats
 from utils.embeddings import get_embeddings
 
 
-def ingest_documents(data_dir: str = config.DATA_DIR) -> bool:
+def ingest_documents(data_dir: str = config.DATA_DIR, runtime_keys=None, return_error: bool = False):
+    error_message = None
+
     try:
         # Validate configuration
-        config.validate_config()
+        config.validate_config(runtime_keys=runtime_keys)
 
         # Check if PDFs exist
         pdf_count = get_pdf_count(data_dir)
         if pdf_count == 0:
-            print(f"No PDF files found in {data_dir}")
-            print("Please add PDF files to the data/ directory")
-            return False
+            error_message = f"No PDF files found in {data_dir}. Please upload or add PDFs first."
+            print(error_message)
+            return (False, error_message) if return_error else False
 
         print(f"\n{'='*50}")
         print(f"Starting Document Ingestion")
@@ -28,8 +30,9 @@ def ingest_documents(data_dir: str = config.DATA_DIR) -> bool:
         documents = load_documents_from_directory(data_dir)
 
         if not documents:
-            print("No documents loaded. Exiting.")
-            return False
+            error_message = "No documents could be loaded from the data directory."
+            print(error_message)
+            return (False, error_message) if return_error else False
 
         # Step 2: Split documents
         print("\n[2/4] Splitting documents into chunks...")
@@ -44,7 +47,7 @@ def ingest_documents(data_dir: str = config.DATA_DIR) -> bool:
 
         # Step 3: Get embeddings model
         print("\n[3/4] Initializing embeddings model...")
-        embeddings = get_embeddings()
+        embeddings = get_embeddings(runtime_keys=runtime_keys)
 
         # Step 4: Create and persist vector store
         print("\n[4/4] Creating vector store and generating embeddings...")
@@ -65,13 +68,14 @@ def ingest_documents(data_dir: str = config.DATA_DIR) -> bool:
         print(f"Stored {len(chunks)} chunks in vector database")
         print(f"Location: {config.VECTORSTORE_PATH}")
 
-        return True
+        return (True, None) if return_error else True
 
     except Exception as e:
-        print(f"\n[ERROR] Ingestion failed: {e}")
+        error_message = str(e)
+        print(f"\n[ERROR] Ingestion failed: {error_message}")
         import traceback
         traceback.print_exc()
-        return False
+        return (False, error_message) if return_error else False
 
 
 def check_vectorstore_exists() -> bool:

@@ -5,7 +5,7 @@ load_dotenv()
 
 EMBEDDING_MODEL_TYPE = os.getenv("EMBEDDING_MODEL_TYPE", "huggingface")
 
-# API Keys
+# API Keys 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -52,18 +52,19 @@ DATA_DIR = "./data"
 
 LLM_TEMPERATURE = 0.3
 
-def validate_config():
-    """Validate required configuration based on embedding model type"""
+def validate_config(runtime_keys=None):
+    api_keys = get_api_keys(runtime_keys)
+
     if EMBEDDING_MODEL_TYPE == "openai":
-        if not OPENAI_API_KEY:
+        if not api_keys["openai"]:
             raise ValueError("OPENAI_API_KEY is required for OpenAI embeddings and LLM. Please set it in .env file")
     elif EMBEDDING_MODEL_TYPE == "huggingface":
-        if not HUGGINGFACE_API_KEY:
+        if not api_keys["huggingface"]:
             print("Warning: HUGGINGFACE_API_KEY not found. Will attempt to use local model.")
-        if not GROQ_API_KEY:
+        if not api_keys["groq"]:
             raise ValueError("GROQ_API_KEY is required for LLM when using HuggingFace embeddings. Please set it in .env file")
     elif EMBEDDING_MODEL_TYPE == "groq":
-        if not GROQ_API_KEY:
+        if not api_keys["groq"]:
             raise ValueError("GROQ_API_KEY is required for Groq LLM. Please set it in .env file")
     else:
         raise ValueError(f"Unsupported embedding model type: {EMBEDDING_MODEL_TYPE}")

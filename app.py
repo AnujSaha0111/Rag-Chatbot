@@ -58,9 +58,16 @@ if 'api_keys' not in st.session_state:
         'huggingface': ''
     }
 
+if 'requires_reingest' not in st.session_state:
+    st.session_state.requires_reingest = False
+
 
 def initialize_chatbot():
     try:
+        if st.session_state.requires_reingest:
+            st.error("⚠️ Documents changed. Please run ingestion successfully before initializing the chatbot.")
+            return False
+
         if not check_vectorstore_exists():
             st.error("⚠️ Vector store not found. Please run ingestion first!")
             return False
@@ -80,14 +87,21 @@ def initialize_chatbot():
 
 def run_ingestion():
     with st.spinner("Processing documents... This may take a few minutes."):
-        success = ingest_documents()
+        success, error_message = ingest_documents(
+            runtime_keys=st.session_state.api_keys,
+            return_error=True
+        )
 
     if success:
         st.success("✅ Documents ingested successfully!")
+        st.session_state.requires_reingest = False
         st.session_state.chatbot_initialized = False
         st.rerun()
     else:
-        st.error("❌ Ingestion failed. Check the logs for details.")
+        if error_message:
+            st.error(f"❌ Ingestion failed: {error_message}")
+        else:
+            st.error("❌ Ingestion failed. Check the logs for details.")
 
 
 def save_uploaded_documents(uploaded_files):
@@ -105,6 +119,7 @@ def save_uploaded_documents(uploaded_files):
         saved_count += 1
 
     return saved_count
+
 
 def list_saved_documents():
     data_dir = Path(config.DATA_DIR)
@@ -140,6 +155,7 @@ def delete_saved_documents(file_names):
 
     return deleted_count, errors
 
+
 def display_sources(sources):
     if not sources:
         return
@@ -151,6 +167,7 @@ def display_sources(sources):
             st.markdown(f"**Content:**")
 
             content = doc.page_content if doc.page_content else "No content available"
+
             clean_content = ' '.join(content.split())[:300] + "..."
 
             import time
@@ -230,6 +247,7 @@ def main():
                 st.warning("Please select at least one PDF to upload.")
             else:
                 saved_count = save_uploaded_documents(uploaded_files)
+                st.session_state.requires_reingest = True
                 st.success(f"✅ Saved {saved_count} file(s) to {config.DATA_DIR}")
                 st.rerun()
 
@@ -249,6 +267,7 @@ def main():
 
                     if deleted_count:
                         st.success(f"✅ Deleted {deleted_count} file(s).")
+                        st.session_state.requires_reingest = True
                         st.session_state.chatbot_initialized = False
 
                     if delete_errors:
@@ -260,7 +279,7 @@ def main():
                     st.rerun()
         else:
             st.caption("No saved PDF documents yet.")
-        
+
         pdf_count = get_pdf_count(config.DATA_DIR)
         vectorstore_exists = check_vectorstore_exists()
 
