@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+from pathlib import Path
 from main import RAGChatbot
 from ingest import ingest_documents, check_vectorstore_exists, get_pdf_count
 import config
@@ -89,6 +90,23 @@ def run_ingestion():
         st.error("❌ Ingestion failed. Check the logs for details.")
 
 
+def save_uploaded_documents(uploaded_files):
+    if not uploaded_files:
+        return 0
+
+    data_dir = Path(config.DATA_DIR)
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    saved_count = 0
+    for uploaded_file in uploaded_files:
+        target_path = data_dir / uploaded_file.name
+        with open(target_path, "wb") as file_handle:
+            file_handle.write(uploaded_file.getbuffer())
+        saved_count += 1
+
+    return saved_count
+
+
 def display_sources(sources):
     if not sources:
         return
@@ -167,6 +185,21 @@ def main():
 
         st.header("📚 Document Management")
 
+        uploaded_files = st.file_uploader(
+            "Upload document(s)",
+            type=["pdf"],
+            accept_multiple_files=True,
+            help="Upload one or more PDF files. They will be saved to the app data directory."
+        )
+
+        if st.button("⬆️ Save Uploaded Documents", use_container_width=True):
+            if not uploaded_files:
+                st.warning("Please select at least one PDF to upload.")
+            else:
+                saved_count = save_uploaded_documents(uploaded_files)
+                st.success(f"✅ Saved {saved_count} file(s) to {config.DATA_DIR}")
+                st.rerun()
+
         pdf_count = get_pdf_count(config.DATA_DIR)
         vectorstore_exists = check_vectorstore_exists()
 
@@ -209,7 +242,7 @@ def main():
 
         with st.expander("ℹ️ How to Use"):
             st.markdown("""
-            1. **Add PDFs**: Place PDF files in the `data/` folder
+            1. **Upload PDFs**: Use the uploader in the sidebar and click 'Save Uploaded Documents'
             2. **Run Ingestion**: Click 'Run Ingestion' to process documents
             3. **Initialize**: Click 'Initialize Chatbot' to load the system
             4. **Chat**: Type your questions in the chat box
@@ -223,7 +256,7 @@ def main():
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.info("**Step 1**\n\nAdd PDF files to the `data/` folder")
+            st.info("**Step 1**\n\nUpload PDFs from the sidebar")
 
         with col2:
             st.info("**Step 2**\n\nClick 'Run Ingestion' in the sidebar")
