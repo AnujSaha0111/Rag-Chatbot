@@ -106,6 +106,39 @@ def save_uploaded_documents(uploaded_files):
 
     return saved_count
 
+def list_saved_documents():
+    data_dir = Path(config.DATA_DIR)
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    return sorted(
+        [
+            file_path.name
+            for file_path in data_dir.iterdir()
+            if file_path.is_file() and file_path.suffix.lower() == ".pdf"
+        ]
+    )
+
+
+def delete_saved_documents(file_names):
+    data_dir = Path(config.DATA_DIR)
+    deleted_count = 0
+    errors = []
+
+    for file_name in file_names:
+        safe_name = Path(file_name).name
+        target_path = data_dir / safe_name
+
+        if not target_path.exists() or not target_path.is_file():
+            errors.append(f"{safe_name}: file not found")
+            continue
+
+        try:
+            target_path.unlink()
+            deleted_count += 1
+        except Exception as exc:
+            errors.append(f"{safe_name}: {exc}")
+
+    return deleted_count, errors
 
 def display_sources(sources):
     if not sources:
@@ -200,6 +233,34 @@ def main():
                 st.success(f"✅ Saved {saved_count} file(s) to {config.DATA_DIR}")
                 st.rerun()
 
+        saved_documents = list_saved_documents()
+        if saved_documents:
+            selected_for_delete = st.multiselect(
+                "Saved documents",
+                options=saved_documents,
+                help="Select one or more saved PDFs to delete from the app data directory."
+            )
+
+            if st.button("🗑️ Delete Selected Documents", use_container_width=True):
+                if not selected_for_delete:
+                    st.warning("Please select at least one document to delete.")
+                else:
+                    deleted_count, delete_errors = delete_saved_documents(selected_for_delete)
+
+                    if deleted_count:
+                        st.success(f"✅ Deleted {deleted_count} file(s).")
+                        st.session_state.chatbot_initialized = False
+
+                    if delete_errors:
+                        st.error("❌ Some files could not be deleted:\n- " + "\n- ".join(delete_errors))
+
+                    if deleted_count:
+                        st.info("Run ingestion again to refresh the vector store after deletions.")
+
+                    st.rerun()
+        else:
+            st.caption("No saved PDF documents yet.")
+        
         pdf_count = get_pdf_count(config.DATA_DIR)
         vectorstore_exists = check_vectorstore_exists()
 
@@ -243,10 +304,11 @@ def main():
         with st.expander("ℹ️ How to Use"):
             st.markdown("""
             1. **Upload PDFs**: Use the uploader in the sidebar and click 'Save Uploaded Documents'
-            2. **Run Ingestion**: Click 'Run Ingestion' to process documents
-            3. **Initialize**: Click 'Initialize Chatbot' to load the system
-            4. **Chat**: Type your questions in the chat box
-            5. **View Sources**: Check the source documents used for answers
+            2. **Delete (Optional)**: Select files under 'Saved documents' and click 'Delete Selected Documents'
+            3. **Run Ingestion**: Click 'Run Ingestion' to process documents
+            4. **Initialize**: Click 'Initialize Chatbot' to load the system
+            5. **Chat**: Type your questions in the chat box
+            6. **View Sources**: Check the source documents used for answers
             """)
 
     if not st.session_state.chatbot_initialized:
